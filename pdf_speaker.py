@@ -21,7 +21,7 @@ class CombinedAppGUI:
 
 
         # --- Kokoro TTS Section ---
-        self.kokoro_frame = ttk.LabelFrame(self.root, text="Select device")
+        self.kokoro_frame = ttk.LabelFrame(self.root, text="Select device:")
         self.kokoro_frame.pack(fill="x", padx=10, pady=5)
 
         # Device selection (with callback)
@@ -510,19 +510,28 @@ class CombinedAppGUI:
                 return None
 
     def extract_text_from_docx(self, docx_path):
-        """Extracts text from a .docx file (Word document)."""
-        try:
-            doc = docx.Document(docx_path)
-            full_text = []
-            for paragraph in doc.paragraphs:
-                full_text.append(paragraph.text)
-            return ["\n".join(full_text)]  # All content in one "page"
-        except Exception as e:
-            print(f"An error occurred (DOCX): {e}")
-            return None
-        except docx.opc.exceptions.PackageNotFoundError:
-            print("PackageNotFoundError: The file may not be a valid .docx file.")
-            return None
+            """Extracts text from a .docx file (Word document) and handles empty files."""
+            try:
+                doc = docx.Document(docx_path)
+                full_text = []
+                for paragraph in doc.paragraphs:
+                    full_text.append(paragraph.text)
+                extracted_text = "\n".join(full_text) # Join into a single string for easier check
+
+                if not extracted_text.strip(): # Check if the extracted text is empty or just whitespace
+                    print("DOCX file is empty.")
+                    return [] # Return an empty list to indicate no text extracted
+
+                return [extracted_text]  # All content in one "page" (as a list)
+
+            except docx.opc.exceptions.PackageNotFoundError:
+                print("PackageNotFoundError: The file may not be a valid .docx file.")
+                return None
+            except Exception as e:
+                print(f"An error occurred (DOCX): {e}")
+                print(f"Exception Type: {type(e)}")
+                print(f"Exception Message: {e}")
+                return None
 
     def copy_to_clipboard(self):
         """Copies the text from the currently selected tab to the clipboard."""
