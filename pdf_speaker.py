@@ -16,7 +16,7 @@ class CombinedAppGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Kokoro_PDF-Speaker")
-        self.root.geometry("800x700")  # Larger initial size
+        self.root.geometry("550x700")  # Larger initial size
         self.center_window(30)
 
 
@@ -77,11 +77,20 @@ class CombinedAppGUI:
         self.speed_label = ttk.Label(self.speed_frame, textvariable=self.speed_label_var)
         self.speed_label.pack(side="left", padx=5)
         self.update_speed_label(None)  # Initialize label with default value
-
+        self.page_frames = {} # Dictionary to store page frames (page number -> frame widget path)
 
         # --- Text Extraction Section ---
         self.extractor_frame = ttk.LabelFrame(self.root, text="Text Extractor")
         self.extractor_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.go_to_page_frame = ttk.Frame(self.extractor_frame)
+        self.go_to_page_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+        self.go_to_page_label = ttk.Label(self.go_to_page_frame, text="Go to Page:")
+        self.go_to_page_label.pack(side="left", padx=5)
+        self.page_number_entry = ttk.Entry(self.go_to_page_frame, width=10)
+        self.page_number_entry.pack(side="left", padx=5)
+        self.go_to_page_button = ttk.Button(self.go_to_page_frame, text="Go", command=self.go_to_page)
+        self.go_to_page_button.pack(side="left", padx=5)
 
         self.file_path_label = tk.Label(self.extractor_frame, text="File Path:")
         self.file_path_label.grid(row=0, column=0, padx=5, pady=5, sticky="e")
@@ -144,6 +153,30 @@ class CombinedAppGUI:
         x = (screen_width // 2) - (width // 2)
         y = y_offset
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+    def go_to_page(self):
+        """Navigates to the specified page number in the notebook."""
+        page_number_str = self.page_number_entry.get()
+        if not page_number_str:
+            messagebox.showwarning("Warning", "Please enter a page number.")
+            return
+
+        try:
+            page_number = int(page_number_str)
+            if page_number <= 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Invalid page number. Please enter a positive integer.")
+            return
+
+        if page_number in self.page_frames:
+            page_frame_path = self.page_frames[page_number]
+            self.notebook.select(page_frame_path) # Select the tab
+            text_widget = self.text_areas.get(page_frame_path)
+            if text_widget:
+                text_widget.see("1.0") # Scroll to the top of the text in the tab
+        else:
+            messagebox.showwarning("Warning", f"Page {page_number} not found in the document.")
 
     # --- Kokoro TTS Methods ---
 
@@ -457,8 +490,9 @@ class CombinedAppGUI:
         if is_paginated:
             for i, page_text in enumerate(text_list):
                 page_frame = tk.Frame(self.notebook)
+                self.page_frames[i + 1] = str(page_frame) # Store page frame path with page number
                 self.notebook.add(page_frame, text=f"Page {i + 1}")
-                text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=80, height=20)
+                text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=60, height=20)
                 text_area.pack(fill="both", expand=True)
                 text_area.insert(tk.END, page_text)
                 text_area.configure(state='disabled')
@@ -466,8 +500,9 @@ class CombinedAppGUI:
                 self.text_areas[str(page_frame)] = text_area
         else:
             page_frame = tk.Frame(self.notebook)
+            self.page_frames[1] = str(page_frame) # For non-paginated, consider it page 1
             self.notebook.add(page_frame, text="Document Content")
-            text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=80, height=20)
+            text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=60, height=20)
             text_area.pack(fill="both", expand=True)
             text_area.insert(tk.END, text_list[0])
             text_area.configure(state='disabled')
