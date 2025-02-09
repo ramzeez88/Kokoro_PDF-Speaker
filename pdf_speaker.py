@@ -1,5 +1,3 @@
-# pdf_speaker.py
-
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 import fitz  # PyMuPDF
@@ -16,32 +14,29 @@ class CombinedAppGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Kokoro_PDF-Speaker")
-        self.root.geometry("550x700")  # Larger initial size
+        self.root.geometry("550x630")
         self.center_window(30)
-
 
         # --- Kokoro TTS Section ---
         self.kokoro_frame = ttk.LabelFrame(self.root, text="Select device:")
         self.kokoro_frame.pack(fill="x", padx=10, pady=5)
 
-        # Device selection (with callback)
         self.device_var = tk.StringVar(value='cpu')
         self.device_var.trace_add("write", self.on_device_change)
-        self.device_frame = ttk.Frame(self.kokoro_frame)  # No LabelFrame
+        self.device_frame = ttk.Frame(self.kokoro_frame)
         self.device_frame.pack(fill="x", padx=10, pady=5)
         ttk.Radiobutton(self.device_frame, text="CPU", variable=self.device_var, value='cpu').pack(side="left",
                                                                                                    padx=5, pady=5)
         ttk.Radiobutton(self.device_frame, text="CUDA", variable=self.device_var, value='cuda').pack(side="left",
                                                                                                     padx=5, pady=5)
 
-        # Voice selection Section in LabelFrame
-        self.voice_labelframe = ttk.LabelFrame(self.kokoro_frame, text="Voice Selection") # New LabelFrame for Voice
+        self.voice_labelframe = ttk.LabelFrame(self.kokoro_frame, text="Voice Selection")
         self.voice_labelframe.pack(fill="x", padx=10, pady=5)
 
         self.voice_var = tk.StringVar(value='af_heart')
-        self.voice_frame = ttk.Frame(self.voice_labelframe) # voice_frame is now inside voice_labelframe
+        self.voice_frame = ttk.Frame(self.voice_labelframe)
         self.voice_frame.pack(fill="x", padx=10, pady=5)
-        ttk.Label(self.voice_frame, text="Select voice:").pack(side="left", padx=5, pady=5) # Label inside voice_frame
+        ttk.Label(self.voice_frame, text="Select voice:").pack(side="left", padx=5, pady=5)
         self.voice_dropdown = ttk.Combobox(self.voice_frame, textvariable=self.voice_var, state="readonly")
         self.voice_dropdown['values'] = ('af_heart', 'af_bella', 'af_jessica', 'af_sarah', 'am_adam', 'am_michael',
                                           'bf_emma', 'bf_isabella', 'bm_george', 'bm_lewis', 'af_nicole', 'af_sky')
@@ -49,16 +44,14 @@ class CombinedAppGUI:
         self.current_voice = None
         self.current_speed = None
 
-        # Auto-advance checkbox
-        self.auto_advance_var = tk.BooleanVar(value=True)  # Default enabled
+        self.auto_advance_var = tk.BooleanVar(value=True)
         self.auto_advance_frame = ttk.Frame(self.kokoro_frame)
         self.auto_advance_frame.pack(fill="x", padx=10, pady=5)
         self.auto_advance_check = ttk.Checkbutton(self.auto_advance_frame,
-                                                text="Auto-advance to next tab",
+                                                text="Auto-advance to next page",
                                                 variable=self.auto_advance_var)
         self.auto_advance_check.pack(side="left", padx=5, pady=5)
 
-        # Speed selection
         self.speed_var = tk.DoubleVar(value=1.0)
         self.speed_frame = ttk.Frame(self.kokoro_frame)
         self.speed_frame.pack(fill="x", padx=10, pady=5)
@@ -69,15 +62,14 @@ class CombinedAppGUI:
             to=2.0,
             variable=self.speed_var,
             orient="horizontal",
-            command=self.update_speed_label  # Callback function to update label
+            command=self.update_speed_label
         )
         self.speed_scale.pack(side="left", fill="x", expand=True, padx=5, pady=5)
 
         self.speed_label_var = tk.StringVar()
         self.speed_label = ttk.Label(self.speed_frame, textvariable=self.speed_label_var)
         self.speed_label.pack(side="left", padx=5)
-        self.update_speed_label(None)  # Initialize label with default value
-        self.page_frames = {} # Dictionary to store page frames (page number -> frame widget path)
+        self.update_speed_label(None)
 
         # --- Text Extraction Section ---
         self.extractor_frame = ttk.LabelFrame(self.root, text="Text Extractor")
@@ -85,6 +77,13 @@ class CombinedAppGUI:
 
         self.go_to_page_frame = ttk.Frame(self.extractor_frame)
         self.go_to_page_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+
+        self.left_button = ttk.Button(self.go_to_page_frame, text="←", width=3, command=self.previous_page)
+        self.left_button.pack(side="left", padx=5)
+
+        self.right_button = ttk.Button(self.go_to_page_frame, text="→", width=3, command=self.next_page)
+        self.right_button.pack(side="left", padx=5)
+
         self.go_to_page_label = ttk.Label(self.go_to_page_frame, text="Go to Page:")
         self.go_to_page_label.pack(side="left", padx=5)
         self.page_number_entry = ttk.Entry(self.go_to_page_frame, width=10)
@@ -99,8 +98,11 @@ class CombinedAppGUI:
         self.browse_button = tk.Button(self.extractor_frame, text="Browse", command=self.browse_file)
         self.browse_button.grid(row=0, column=2, padx=5, pady=5)
 
-        self.notebook = ttk.Notebook(self.extractor_frame)
-        self.notebook.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        # --- Single ScrolledText for Display ---
+        self.text_area = scrolledtext.ScrolledText(self.extractor_frame, wrap=tk.WORD, width=60, height=10)
+        self.text_area.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        self.text_area.configure(state='disabled')
+
         self.extractor_frame.grid_rowconfigure(1, weight=1)
         self.extractor_frame.grid_columnconfigure(0, weight=1)
         self.extractor_frame.grid_columnconfigure(1, weight=1)
@@ -110,7 +112,6 @@ class CombinedAppGUI:
         self.button_frame = ttk.Frame(self.root)
         self.button_frame.pack(fill="x", padx=10, pady=5)
 
-        # Kokoro Buttons (with adjusted layout)
         self.play_button = ttk.Button(self.button_frame, text="Play", command=self.play_audio)
         self.play_button.pack(side="left", padx=5, pady=5)
         self.pause_button = ttk.Button(self.button_frame, text="Pause/Resume", command=self.pause_resume_audio)
@@ -118,13 +119,11 @@ class CombinedAppGUI:
         self.stop_button = ttk.Button(self.button_frame, text="Stop", command=self.stop_audio)
         self.stop_button.pack(side="left", padx=5, pady=5)
 
-        # Copy-to-Clipboard Button
         self.copy_button = ttk.Button(self.button_frame, text="Copy to Clipboard", command=self.copy_to_clipboard)
         self.copy_button.pack(side="left", padx=5, pady=5)
 
-        # Exit Button
         self.exit_button = ttk.Button(self.button_frame, text="Exit", command=self.on_exit)
-        self.exit_button.pack(side="right", padx=5, pady=5)  # Keep Exit on the right
+        self.exit_button.pack(side="right", padx=5, pady=5)
 
         # --- Audio Control Variables ---
         self.audio_thread = None
@@ -138,10 +137,12 @@ class CombinedAppGUI:
         self.stream = None
         self.pipeline = None
 
-        # --- Store Text Areas ---
-        self.text_areas = {}  # Dictionary to store text areas
+        # --- Page Management ---
+        self.current_page = 1
+        self.pages = []  # List to store the text of each page
+        self.total_pages = 0
+        self.is_paginated = False # Flag to indicate if the document is paginated
 
-        # Initialize pipeline on startup (with default device)
         self.initialize_pipeline()
 
     def center_window(self, y_offset=0):
@@ -154,8 +155,18 @@ class CombinedAppGUI:
         y = y_offset
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
+    def previous_page(self):
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.display_page()
+
+    def next_page(self):
+        if self.current_page < self.total_pages:
+            self.current_page += 1
+            self.display_page()
+
     def go_to_page(self):
-        """Navigates to the specified page number in the notebook."""
+        """Navigates to the specified page number."""
         page_number_str = self.page_number_entry.get()
         if not page_number_str:
             messagebox.showwarning("Warning", "Please enter a page number.")
@@ -163,38 +174,43 @@ class CombinedAppGUI:
 
         try:
             page_number = int(page_number_str)
-            if page_number <= 0:
+            if page_number <= 0 or page_number > self.total_pages:
                 raise ValueError
+            self.current_page = page_number
+            self.display_page()
         except ValueError:
-            messagebox.showerror("Error", "Invalid page number. Please enter a positive integer.")
-            return
+            messagebox.showerror("Error", "Invalid page number. Please enter a valid page number.")
 
-        if page_number in self.page_frames:
-            page_frame_path = self.page_frames[page_number]
-            self.notebook.select(page_frame_path) # Select the tab
-            text_widget = self.text_areas.get(page_frame_path)
-            if text_widget:
-                text_widget.see("1.0") # Scroll to the top of the text in the tab
-        else:
-            messagebox.showwarning("Warning", f"Page {page_number} not found in the document.")
-
-    # --- Kokoro TTS Methods ---
+    def display_page(self):
+        """Displays the content of the current page in the text area."""
+        if 1 <= self.current_page <= self.total_pages:
+            self.text_area.configure(state='normal')
+            self.text_area.delete("1.0", tk.END)
+            if self.is_paginated:
+                page_text = self.pages[self.current_page - 1]
+                if self.current_page == self.total_pages:
+                    page_text += "\nEnd of Document"
+                self.text_area.insert(tk.END, f"Page {self.current_page},\n{page_text}")
+            else:
+                page_text = self.pages[0]
+                if self.total_pages > 0:
+                  page_text += "\nEnd of Document"
+                self.text_area.insert(tk.END, page_text)
+            self.text_area.configure(state='disabled')
+            self.text_area.see("1.0")
 
     def update_speed_label(self, value):
-        """Updates the label next to the speed scale with the current speed value."""
         current_speed = self.speed_var.get()
         self.speed_label_var.set(f"Speed: {current_speed:.2f}x")
 
-
     def initialize_pipeline(self):
-        """Initializes or re-initializes the KPipeline."""
-        self.clear_pipeline()  # Clear any existing pipeline first
+        self.clear_pipeline()
         try:
             self.pipeline = KPipeline(lang_code='a', device=self.device_var.get())
         except RuntimeError as e:
             if "No CUDA GPUs are available" in str(e):
                 messagebox.showerror("CUDA Error", "No CUDA GPUs are available.  Switching to CPU.")
-                self.device_var.set('cpu')  # Switch to CPU
+                self.device_var.set('cpu')
                 self.pipeline = KPipeline(lang_code='a', device='cpu')
             else:
                 messagebox.showerror("Initialization Error", str(e))
@@ -202,33 +218,22 @@ class CombinedAppGUI:
             messagebox.showerror("Initialization Error", str(e))
 
     def on_device_change(self, *args):
-        """Handles device changes immediately."""
         self.initialize_pipeline()
-
 
     def play_audio(self):
         if self.is_playing:
             messagebox.showwarning("Warning", "Audio is already playing.")
             return
 
-        # Get current tab's frame
-        current_tab = self.notebook.select()
-        if not current_tab:
-            messagebox.showwarning("Warning", "Please select a tab with text.")
+        if not self.pages:
+            messagebox.showwarning("Warning", "Please load a document first.")
             return
 
-        # Get text area using the frame's path
-        text_widget = self.text_areas.get(str(current_tab))
-        if text_widget is None:
-            messagebox.showwarning("Warning", "Selected tab has no associated text area.")
-            return
-
-        text = text_widget.get("1.0", "end-1c").strip()
+        text = self.text_area.get("1.0", "end-1c").strip()
         if not text:
-            messagebox.showwarning("Warning", "Please enter or extract some text.")
+            messagebox.showwarning("Warning", "No text to speak on this page.")
             return
 
-        # Split text into manageable chunks
         MAX_CHUNK_SIZE = 1000
         chunks = self.split_text_into_chunks(text, MAX_CHUNK_SIZE)
 
@@ -241,7 +246,6 @@ class CombinedAppGUI:
         voice = self.voice_var.get()
         speed = self.speed_var.get()
 
-        # Store current voice and speed settings
         self.current_voice = voice
         self.current_speed = speed
 
@@ -250,14 +254,12 @@ class CombinedAppGUI:
         self.audio_thread.start()
 
     def split_text_into_chunks(self, text, max_size):
-        """Split text into chunks at sentence boundaries."""
         sentences = text.replace('\n', ' ').split('. ')
         chunks = []
         current_chunk = []
         current_size = 0
 
         for sentence in sentences:
-            # Add period back if it was removed (except for last sentence)
             if sentence != sentences[-1]:
                 sentence += '.'
 
@@ -275,11 +277,9 @@ class CombinedAppGUI:
 
         return chunks
 
-
     def generate_and_play_audio(self, text_chunks, voice, speed):
         self.audio_data = []
         try:
-            # Disable play button at start
             self.root.after(0, lambda: self.play_button.config(state="disabled"))
 
             for chunk in text_chunks:
@@ -314,42 +314,25 @@ class CombinedAppGUI:
                     self.stream.close()
                     self.stream = None
 
-                # Check auto-advance setting and handle next tab
+                # Auto-advance logic (using root.after)
                 if not self.stop_playback and self.auto_advance_var.get():
-                    current_tab = self.notebook.select()
-                    current_index = self.notebook.index(current_tab)
-                    if current_index < len(self.notebook.tabs()) - 1:
-                        next_tab = self.notebook.tabs()[current_index + 1]
-                        text_widget = self.text_areas.get(str(next_tab))
-                        if text_widget:
-                            next_text = text_widget.get("1.0", "end-1c").strip()
-                            if next_text:
-                                self.notebook.select(next_tab)
-                                chunks = self.split_text_into_chunks(next_text, 1000)
-                                self.generate_and_play_audio(chunks, voice, speed)
-                                return
+                    if self.current_page < self.total_pages:
+                        self.next_page()
+                        # Schedule play_audio for the next page after a delay
+                        self.root.after(50, self.play_audio)  # 50ms delay
+                        return
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
             if not self.stop_playback and not self.is_paused:
                 self.is_playing = False
-                # Only enable play button if we're not continuing to next tab
-                if not (self.auto_advance_var.get() and
-                    self.notebook.index(self.notebook.select()) < len(self.notebook.tabs()) - 1):
-                    self.root.after(0, lambda: self.play_button.config(state="normal"))
+                # No need to check for auto-advance here, it's handled above
+                self.root.after(0, lambda: self.play_button.config(state="normal"))
 
     def audio_callback(self, outdata, frames, time_info, status, userdata=None):
-        """
-        Callback function for audio playback
-        outdata: numpy array for output data
-        frames: number of frames to process
-        time_info: dictionary with timing information
-        status: status flags
-        userdata: user data passed to the callback
-        """
         if status:
-            print(status)
+            #print(status)
         if self.is_paused or self.stop_playback:
             outdata[:] = 0
             return
@@ -370,41 +353,34 @@ class CombinedAppGUI:
             speed = self.speed_var.get()
 
             if new_voice != self.current_voice or speed != self.current_speed:
-                current_tab = self.notebook.select()
-                text_widget = self.text_areas.get(str(current_tab))
-                if text_widget:
-                    text = text_widget.get("1.0", "end-1c").strip()
+                text = self.text_area.get("1.0", "end-1c").strip()
+                words = text.split()
+                total_chars = len(text)
+                approx_position = int(total_chars * (self.current_position / len(self.audio_data)))
 
-                    # More precise text position calculation
-                    words = text.split()
-                    total_chars = len(text)
-                    approx_position = int(total_chars * (self.current_position / len(self.audio_data)))
+                word_position = 0
+                char_count = 0
+                for i, word in enumerate(words):
+                    if char_count + len(word) > approx_position:
+                        word_position = i - 1
+                        break
+                    char_count += len(word) + 1
 
-                    # Find the nearest word boundary
-                    word_position = 0
-                    char_count = 0
-                    for i, word in enumerate(words):
-                        if char_count + len(word) > approx_position:
-                            word_position = i - 1  # Go back one word
-                            break
-                        char_count += len(word) + 1  # +1 for space
+                remaining_text = ' '.join(words[max(0, word_position):])
 
-                    # Get text from the previous word
-                    remaining_text = ' '.join(words[max(0, word_position):])
+                self.stop_audio()
 
-                    self.stop_audio()
-
-                    self.stop_playback = False
-                    self.is_paused = False
-                    self.is_playing = True
-                    self.current_voice = new_voice
-                    self.current_speed = speed
-                    chunks = self.split_text_into_chunks(remaining_text, 1000)
-                    self.audio_thread = threading.Thread(target=self.generate_and_play_audio,
-                                                    args=(chunks, new_voice, speed))
-                    self.audio_thread.start()
-                    self.pause_button.config(text="Pause")
-                    return
+                self.stop_playback = False
+                self.is_paused = False
+                self.is_playing = True
+                self.current_voice = new_voice
+                self.current_speed = speed
+                chunks = self.split_text_into_chunks(remaining_text, 1000)
+                self.audio_thread = threading.Thread(target=self.generate_and_play_audio,
+                                                args=(chunks, new_voice, speed))
+                self.audio_thread.start()
+                self.pause_button.config(text="Pause")
+                return
 
             self.is_paused = False
             self.start_timestamp = time.time() - self.accumulated_time
@@ -413,7 +389,6 @@ class CombinedAppGUI:
             self.is_paused = True
             self.accumulated_time = time.time() - self.start_timestamp
             self.pause_button.config(text="Resume")
-
 
     def stop_audio(self):
         self.stop_playback = True
@@ -428,7 +403,7 @@ class CombinedAppGUI:
         self.current_position = 0
         self.accumulated_time = 0
         self.pause_button.config(text="Pause/Resume")
-        self.play_button.config(state="normal")  # Enable play button when stopped
+        self.play_button.config(state="normal")
         if hasattr(self, 'next_audio_thread'):
             self.next_audio_thread = None
 
@@ -440,10 +415,7 @@ class CombinedAppGUI:
                 torch.cuda.empty_cache()
             gc.collect()
 
-    # --- Text Extraction Methods ---
-
     def browse_file(self):
-        """Opens a file dialog for PDF, TXT, and DOCX files."""
         filepath = filedialog.askopenfilename(
             filetypes=[
                 ("PDF Files", "*.pdf"),
@@ -458,136 +430,84 @@ class CombinedAppGUI:
             self.extract_and_display(filepath)
 
     def extract_and_display(self, filepath):
-        """Extracts and displays text based on file type."""
-        file_ext = filepath.lower().split('.')[-1]  # Get file extension
+        file_ext = filepath.lower().split('.')[-1]
 
         if file_ext == "pdf":
-            text_per_page = self.extract_text_from_pdf_per_page(filepath)
-            self.display_in_tabs(text_per_page, is_paginated=True)
+            self.pages = self.extract_text_from_pdf_per_page(filepath)
+            self.is_paginated = True
         elif file_ext == "txt":
-            text_per_page = self.extract_text_from_txt(filepath)
-            self.display_in_tabs(text_per_page, is_paginated=False)  # TXT is not paginated
+            self.pages = self.extract_text_from_txt(filepath)
+            self.is_paginated = False
         elif file_ext == "docx":
-            text_per_page = self.extract_text_from_docx(filepath)
-            self.display_in_tabs(text_per_page, is_paginated=False)  # DOCX is not paginated
+            self.pages = self.extract_text_from_docx(filepath)
+            self.is_paginated = False
         else:
-            self.display_in_tabs(None, is_paginated=False)  # Handle unsupported formats
+            self.pages = []
+            self.is_paginated = False
 
-    def display_in_tabs(self, text_list, is_paginated):
-        # Clear existing tabs
-        for tab_id in self.notebook.tabs():
-            self.notebook.forget(tab_id)
-            if tab_id in self.text_areas:
-                del self.text_areas[tab_id]
-
-        if not text_list:
-            error_frame = tk.Frame(self.notebook)
-            self.notebook.add(error_frame, text="Error")
-            error_label = tk.Label(error_frame, text="Error: Could not extract text or unsupported file type.")
-            error_label.pack(padx=10, pady=10)
-            return
-
-        if is_paginated:
-            for i, page_text in enumerate(text_list):
-                page_frame = tk.Frame(self.notebook)
-                self.page_frames[i + 1] = str(page_frame) # Store page frame path with page number
-                self.notebook.add(page_frame, text=f"Page {i + 1}")
-                text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=60, height=20)
-                text_area.pack(fill="both", expand=True)
-                text_area.insert(tk.END, page_text)
-                text_area.configure(state='disabled')
-                # Store using the widget path as key
-                self.text_areas[str(page_frame)] = text_area
-        else:
-            page_frame = tk.Frame(self.notebook)
-            self.page_frames[1] = str(page_frame) # For non-paginated, consider it page 1
-            self.notebook.add(page_frame, text="Document Content")
-            text_area = scrolledtext.ScrolledText(page_frame, wrap=tk.WORD, width=60, height=20)
-            text_area.pack(fill="both", expand=True)
-            text_area.insert(tk.END, text_list[0])
-            text_area.configure(state='disabled')
-            # Store using the widget path as key
-            self.text_areas[str(page_frame)] = text_area
+        self.total_pages = len(self.pages) if self.pages else 0
+        self.current_page = 1
+        self.display_page()
 
     def extract_text_from_pdf_per_page(self, pdf_path):
-        """Extracts text from a PDF, adding page numbers and "End of Document"."""
         try:
             with fitz.open(pdf_path) as doc:
                 text_list = []
                 for page_num, page in enumerate(doc):
                     page_text = page.get_text()
-                    formatted_text = f"Page {page_num + 1}\n{page_text}"
-                    text_list.append(formatted_text)
-                if text_list:
-                    text_list[-1] += "\nEnd of Document"
+                    text_list.append(page_text)
                 return text_list
         except Exception as e:
-            print(f"An error occurred (PDF): {e}")
-            return None
+            #print(f"An error occurred (PDF): {e}")
+            return []
 
     def extract_text_from_txt(self, txt_path):
-        """Extracts text from a .txt file."""
         try:
             with open(txt_path, "r", encoding="utf-8") as f:
                 text = f.read()
-                return [text]  # Return as a list
+                return [text]
         except Exception as e:
-            print(f"An error occurred (TXT): {e}")
-            return None
+            #print(f"An error occurred (TXT): {e}")
+            return []
         except UnicodeDecodeError:
-            print(f"UnicodeDecodeError with UTF-8. Trying latin-1.")
+            #print(f"UnicodeDecodeError with UTF-8. Trying latin-1.")
             try:
                 with open(txt_path, 'r', encoding='latin-1') as f:
                     text = f.read()
                     return [text]
             except Exception as e:
-                print(f"An error occurred (TXT, latin-1): {e}")
-                return None
+                #print(f"An error occurred (TXT, latin-1): {e}")
+                return []
 
     def extract_text_from_docx(self, docx_path):
-            """Extracts text from a .docx file (Word document) and handles empty files."""
-            try:
-                doc = docx.Document(docx_path)
-                full_text = []
-                for paragraph in doc.paragraphs:
-                    full_text.append(paragraph.text)
-                extracted_text = "\n".join(full_text) # Join into a single string for easier check
+        try:
+            doc = docx.Document(docx_path)
+            full_text = []
+            for paragraph in doc.paragraphs:
+                full_text.append(paragraph.text)
+            extracted_text = "\n".join(full_text)
 
-                if not extracted_text.strip(): # Check if the extracted text is empty or just whitespace
-                    print("DOCX file is empty.")
-                    return [] # Return an empty list to indicate no text extracted
+            if not extracted_text.strip():
+                #print("DOCX file is empty.")
+                return []
 
-                return [extracted_text]  # All content in one "page" (as a list)
+            return [extracted_text]
 
-            except docx.opc.exceptions.PackageNotFoundError:
-                print("PackageNotFoundError: The file may not be a valid .docx file.")
-                return None
-            except Exception as e:
-                print(f"An error occurred (DOCX): {e}")
-                print(f"Exception Type: {type(e)}")
-                print(f"Exception Message: {e}")
-                return None
+        except docx.opc.exceptions.PackageNotFoundError:
+            #print("PackageNotFoundError: The file may not be a valid .docx file.")
+            return []
+        except Exception as e:
+            #print(f"An error occurred (DOCX): {e}")
+            #print(f"Exception Type: {type(e)}")
+            #print(f"Exception Message: {e}")
+            return []
 
     def copy_to_clipboard(self):
-        """Copies the text from the currently selected tab to the clipboard."""
         try:
-            current_tab = self.notebook.select()
-             # Check if a tab is actually selected
-            if not current_tab:
-                messagebox.showwarning("Warning", "No tab selected to copy from.")
-                return
-
-            text_widget = self.text_areas.get(current_tab)
-
-            if text_widget is None:
-                messagebox.showwarning("Warning", "Selected tab has no associated text area.")
-                return
-
-            text = text_widget.get("1.0", "end-1c")
+            text = self.text_area.get("1.0", "end-1c")
             self.root.clipboard_clear()
             self.root.clipboard_append(text)
             messagebox.showinfo("Copied", "Text copied to clipboard!")
-
         except Exception as e:
             messagebox.showerror("Error", f"Could not copy text: {e}")
 
@@ -595,7 +515,6 @@ class CombinedAppGUI:
         self.stop_audio()
         self.clear_pipeline()
         self.root.destroy()
-
 
 if __name__ == "__main__":
     root = tk.Tk()
