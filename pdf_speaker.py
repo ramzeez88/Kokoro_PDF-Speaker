@@ -332,7 +332,7 @@ class CombinedAppGUI:
 
     def audio_callback(self, outdata, frames, time_info, status, userdata=None):
         if status:
-            #print(status)
+            print(status)
         if self.is_paused or self.stop_playback:
             outdata[:] = 0
             return
@@ -458,7 +458,7 @@ class CombinedAppGUI:
                     text_list.append(page_text)
                 return text_list
         except Exception as e:
-            #print(f"An error occurred (PDF): {e}")
+            print(f"An error occurred (PDF): {e}")
             return []
 
     def extract_text_from_txt(self, txt_path):
@@ -467,16 +467,16 @@ class CombinedAppGUI:
                 text = f.read()
                 return [text]
         except Exception as e:
-            #print(f"An error occurred (TXT): {e}")
+            print(f"An error occurred (TXT): {e}")
             return []
         except UnicodeDecodeError:
-            #print(f"UnicodeDecodeError with UTF-8. Trying latin-1.")
+            print(f"UnicodeDecodeError with UTF-8. Trying latin-1.")
             try:
                 with open(txt_path, 'r', encoding='latin-1') as f:
                     text = f.read()
                     return [text]
             except Exception as e:
-                #print(f"An error occurred (TXT, latin-1): {e}")
+                print(f"An error occurred (TXT, latin-1): {e}")
                 return []
 
     def extract_text_from_docx(self, docx_path):
@@ -488,18 +488,18 @@ class CombinedAppGUI:
             extracted_text = "\n".join(full_text)
 
             if not extracted_text.strip():
-                #print("DOCX file is empty.")
+                print("DOCX file is empty.")
                 return []
 
             return [extracted_text]
 
         except docx.opc.exceptions.PackageNotFoundError:
-            #print("PackageNotFoundError: The file may not be a valid .docx file.")
+            print("PackageNotFoundError: The file may not be a valid .docx file.")
             return []
         except Exception as e:
-            #print(f"An error occurred (DOCX): {e}")
-            #print(f"Exception Type: {type(e)}")
-            #print(f"Exception Message: {e}")
+            print(f"An error occurred (DOCX): {e}")
+            print(f"Exception Type: {type(e)}")
+            print(f"Exception Message: {e}")
             return []
 
     def copy_to_clipboard(self):
